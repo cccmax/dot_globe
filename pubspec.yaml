@@ -10,9 +10,9 @@ documentation: https://pub.dev/documentation/dot_globe/latest/
 topics:
   - globe
   - map
-  - 3d
   - animation
   - ui
+  - data-visualization
 
 # pub.dev gallery + search thumbnail (the first entry is the thumbnail).
 screenshots:
