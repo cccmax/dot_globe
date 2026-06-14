@@ -1,0 +1,44 @@
+name: dot_globe
+description: >-
+  A dotted (halftone) 3D globe for Flutter — spin it, drop any widget as a
+  lat/lng marker. Pure Dart, zero deps, light & dark presets out of the box.
+version: 0.1.0
+homepage: https://github.com/cccmax/dot_globe
+repository: https://github.com/cccmax/dot_globe
+issue_tracker: https://github.com/cccmax/dot_globe/issues
+documentation: https://pub.dev/documentation/dot_globe/latest/
+topics:
+  - globe
+  - map
+  - 3d
+  - animation
+  - ui
+
+# pub.dev gallery + search thumbnail (the first entry is the thumbnail).
+screenshots:
+  - description: "Dotted globe with widget markers and great-circle arc routes."
+    path: screenshots/showcase.webp
+  - description: "Nine ready-made color presets, one line each."
+    path: screenshots/presets.webp
+  - description: "Neon halftone globe with a magenta rim glow."
+    path: screenshots/neon.webp
+  - description: "World-cup odds bubbles pinned to each nation."
+    path: screenshots/world_cup.webp
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^5.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  assets:
+    # 陆地采样点（int16 lat*100/lng*100 对，Natural Earth 110m 离线生成，~25KB）
+    - assets/land_dots.bin
