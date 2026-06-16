@@ -34,16 +34,36 @@ abstract class DotGlobeBinding {
   /// The coordinate facing the viewer right now.
   DotGlobeFacing currentFacing();
 
-  /// Eases the globe so the given coordinate faces the viewer.
+  /// The zoom factor applied right now (`1.0` is the natural size).
+  double currentScale();
+
+  /// Eases the globe so the given coordinate faces the viewer, optionally
+  /// zooming to [scale] over the same animation. The scale is clamped to the
+  /// globe's `[minScale, maxScale]`. When [hold] is true the globe parks at the
+  /// destination on arrival; otherwise it resumes idle auto-rotation.
   Future<void> animateFacingTo({
     double? latitude,
     double? longitude,
+    double? scale,
+    bool hold = false,
     required Duration duration,
     required Curve curve,
   });
 
-  /// Snaps the globe so the given coordinate faces the viewer.
-  void jumpFacingTo({double? latitude, double? longitude});
+  /// Snaps the globe so the given coordinate faces the viewer, optionally
+  /// jumping the zoom to [scale] (clamped to `[minScale, maxScale]`). When
+  /// [hold] is true the globe parks there; otherwise it resumes idle
+  /// auto-rotation.
+  void jumpFacingTo({
+    double? latitude,
+    double? longitude,
+    double? scale,
+    bool hold = false,
+  });
+
+  /// Eases the globe back to its initial facing and zoom
+  /// (`initialLatitude`/`initialLongitude`/`initialScale`).
+  Future<void> resetView({required Duration duration, required Curve curve});
 }
 
 /// Imperative handle for a [DotGlobe]: spin it to a coordinate from outside the
@@ -80,30 +100,100 @@ class DotGlobeController extends ChangeNotifier {
   /// The coordinate facing the viewer right now, or `null` if not attached.
   DotGlobeFacing? get facing => _binding?.currentFacing();
 
-  /// Spins the globe so [latitude]/[longitude] ends up facing the viewer,
-  /// easing over [duration]. Omitted axes keep their current value. The pitch
-  /// (latitude) is clamped to the globe's tilt limits. Auto-rotation and
-  /// inertia pause for the duration and resume afterwards.
+  /// The zoom factor applied right now (`1.0` is the natural size), or `null`
+  /// if not attached.
+  double? get scale => _binding?.currentScale();
+
+  /// Spins the globe so [latitude]/[longitude] ends up facing the viewer and,
+  /// when [scale] is given, zooms to it — both eased over [duration] in one
+  /// composable move. Omitted axes/zoom keep their current value. The pitch
+  /// (latitude) is clamped to the globe's tilt limits and the zoom to its
+  /// `[minScale, maxScale]`. Auto-rotation and inertia pause for the duration
+  /// and resume afterwards.
+  ///
+  /// ```dart
+  /// // France faces front, zoomed in 2×.
+  /// controller.animateTo(latitude: 46, longitude: 2, scale: 2);
+  /// ```
+  ///
+  /// When [hold] is `true`, the globe parks at the destination on arrival —
+  /// auto-rotation and pitch spring-back stay off, so the target stays centred
+  /// until the next drag or programmatic move. When `false` (default), idle
+  /// auto-rotation resumes and the pitch eases back to `initialLatitude`.
   ///
   /// Returns when the animation completes (or is superseded / detached).
   Future<void> animateTo({
     double? latitude,
     double? longitude,
+    double? scale,
+    bool hold = false,
     Duration duration = const Duration(milliseconds: 600),
     Curve curve = Curves.easeInOutCubic,
   }) async {
     await _binding?.animateFacingTo(
       latitude: latitude,
       longitude: longitude,
+      scale: scale,
+      hold: hold,
       duration: duration,
       curve: curve,
     );
   }
 
-  /// Snaps the globe so [latitude]/[longitude] faces the viewer immediately.
-  /// Omitted axes keep their current value.
-  void jumpTo({double? latitude, double? longitude}) {
-    _binding?.jumpFacingTo(latitude: latitude, longitude: longitude);
+  /// Eases the zoom to [scale] (clamped to `[minScale, maxScale]`) without
+  /// changing the facing coordinate.
+  ///
+  /// ```dart
+  /// controller.zoomTo(3); // zoom in 3×
+  /// controller.zoomTo(1); // back to natural size
+  /// ```
+  ///
+  /// When [hold] is `true` the globe parks at the current facing once the zoom
+  /// settles; otherwise idle auto-rotation resumes.
+  Future<void> zoomTo(
+    double scale, {
+    bool hold = false,
+    Duration duration = const Duration(milliseconds: 600),
+    Curve curve = Curves.easeInOutCubic,
+  }) async {
+    await _binding?.animateFacingTo(
+      scale: scale,
+      hold: hold,
+      duration: duration,
+      curve: curve,
+    );
+  }
+
+  /// Eases the globe back to its initial facing and zoom
+  /// (`initialLatitude`/`initialLongitude`/`initialScale`).
+  ///
+  /// ```dart
+  /// controller.resetView(); // undo any spin + zoom
+  /// ```
+  Future<void> resetView({
+    Duration duration = const Duration(milliseconds: 600),
+    Curve curve = Curves.easeInOutCubic,
+  }) async {
+    await _binding?.resetView(duration: duration, curve: curve);
+  }
+
+  /// Snaps the globe so [latitude]/[longitude] faces the viewer immediately and,
+  /// when [scale] is given, jumps the zoom to it (clamped to
+  /// `[minScale, maxScale]`). Omitted axes/zoom keep their current value. When
+  /// [hold] is `true` the globe parks there; otherwise idle auto-rotation
+  /// resumes.
+  void jumpTo({
+    double? latitude,
+    double? longitude,
+    double? scale,
+    bool hold = false,
+  }) {
+    _binding?.jumpFacingTo(
+      latitude: latitude,
+      longitude: longitude,
+      scale: scale,
+      hold: hold,
+    );
   }
 
   // ---- internal wiring (called by DotGlobe's State) ----

@@ -17,9 +17,9 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:dot_globe/dot_globe.dart';
-import 'package:dot_globe/src/dot_globe_geometry.dart';
 import 'package:flutter/material.dart';
 
+import 'package:dot_globe_example/demos/demo_geometries.dart';
 import 'package:dot_globe_example/demos/light_demo.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -28,6 +28,13 @@ import 'package:flutter_test/flutter_test.dart';
 const int _kFrames = 64;
 const Duration _kStep = Duration(milliseconds: 55);
 const double _kPixelRatio = 2.0;
+
+// Pre-built coloured geometries, warmed once in setUpAll via the shared pure
+// builders so every frame paints from the cached cloud (no async per frame).
+late final DotGlobeGeometry _naturalGeometry;
+late final DotGlobeGeometry _heatmapTurboGeometry;
+late final DotGlobeGeometry _fantasyGeometry;
+late final DotGlobeGeometry _dartTextGeometry;
 
 class _Spec {
   const _Spec(this.name, this.size, this.builder);
@@ -43,7 +50,10 @@ final List<_Spec> _scenes = <_Spec>[
   _Spec('presets', const Size(380, 620), () => const _PresetScene()),
   _Spec('neon', const Size(460, 460), () => const _NeonScene()),
   _Spec('controller', const Size(380, 620), () => const _ControllerScene()),
-  _Spec('routes', const Size(460, 460), () => const _RoutesScene()),
+  _Spec('natural', const Size(480, 480), () => const _NaturalScene()),
+  _Spec('heatmap_turbo', const Size(480, 480), () => const _HeatmapScene()),
+  _Spec('fantasy', const Size(480, 480), () => const _FantasyScene()),
+  _Spec('custom_text', const Size(480, 480), () => const _CustomTextScene()),
 ];
 
 Future<void> _loadRealFonts() async {
@@ -81,7 +91,14 @@ void main() {
   setUpAll(() async {
     await _loadRealFonts();
     // Warm the land-dot cache so the globe paints from frame 0.
-    await DotGlobeGeometry.load();
+    final base = await DotGlobeGeometry.load();
+    // Warm the natural-colour Earth cloud (async); colorize is synchronous, so
+    // the coloured/custom clouds can be built right after.
+    _naturalGeometry = await DotGlobeGeometry.naturalEarth();
+    _heatmapTurboGeometry =
+        buildHeatmapGeometry(base, DotGlobeColormap.turbo);
+    _fantasyGeometry = buildFantasyPlanet();
+    _dartTextGeometry = buildDartTextGeometry();
   });
 
   for (final spec in _scenes) {
@@ -467,52 +484,202 @@ class _CityDot extends StatelessWidget {
   }
 }
 
-/// Routes: city markers connected by great-circle arcs (flight paths).
-class _RoutesScene extends StatelessWidget {
-  const _RoutesScene();
+// Dark per-dot style shared by the natural + heatmap scenes — mirrors the
+// colored_dots demo's DotGlobeStyle (per-dot colours override dotColor).
+const DotGlobeStyle _colouredDotsStyle = DotGlobeStyle(
+  backgroundColor: Color(0xFF05070D), // Kit.voidColor
+  dotColor: Color(0xFF334466), // fallback, overridden by per-dot colours
+  sphereColor: Color(0x331A2A4A),
+  dotRadius: 1.8,
+);
+
+/// Natural-colour Earth (DotGlobeGeometry.naturalEarth) — the colored_dots demo
+/// "Natural" mode.
+class _NaturalScene extends StatelessWidget {
+  const _NaturalScene();
 
   @override
   Widget build(BuildContext context) {
     return DotGlobe(
-      style: DotGlobeStyle.midnight,
-      radiusFactor: 0.52,
-      initialLatitude: 18,
-      initialLongitude: 90,
-      arcs: const [
-        DotGlobeArc(
-          startLatitude: 35.7, startLongitude: 139.7,
-          endLatitude: 51.5, endLongitude: -0.1,
-          color: Color(0xFFFFD24C), altitude: 0.45, dashed: true,
+      geometry: _naturalGeometry,
+      style: _colouredDotsStyle,
+      autoRotateSpeed: 0.10,
+      radiusFactor: 0.88,
+    );
+  }
+}
+
+/// Heatmap (turbo colormap) — the colored_dots demo "Heatmap" mode.
+class _HeatmapScene extends StatelessWidget {
+  const _HeatmapScene();
+
+  @override
+  Widget build(BuildContext context) {
+    return DotGlobe(
+      geometry: _heatmapTurboGeometry,
+      style: _colouredDotsStyle,
+      autoRotateSpeed: 0.10,
+      radiusFactor: 0.88,
+    );
+  }
+}
+
+/// Fantasy planet — procedural Fibonacci cloud + biome colours, POI pins, arcs.
+/// Mirrors the fantasy_world demo's DotGlobe config.
+class _FantasyScene extends StatelessWidget {
+  const _FantasyScene();
+
+  // POI markers — Material-icon pins (no emoji: flutter_tester has no emoji
+  // font, so they would render as tofu).
+  static const List<DotGlobeMarker> _markers = [
+    DotGlobeMarker(
+      latitude: 42.0,
+      longitude: -30.0,
+      anchor: Alignment.bottomCenter,
+      child: _PinBadge(
+          icon: Icons.castle, label: 'Capital', accent: Color(0xFFFFD966)),
+    ),
+    DotGlobeMarker(
+      latitude: -18.0,
+      longitude: 55.0,
+      anchor: Alignment.bottomCenter,
+      child: _PinBadge(
+          icon: Icons.sports_kabaddi, label: 'Arena', accent: Color(0xFFFF6B6B)),
+    ),
+    DotGlobeMarker(
+      latitude: 10.0,
+      longitude: 130.0,
+      anchor: Alignment.bottomCenter,
+      child: _PinBadge(
+          icon: Icons.diamond, label: 'Mine', accent: Color(0xFF7EC8E3)),
+    ),
+    DotGlobeMarker(
+      latitude: -55.0,
+      longitude: -110.0,
+      anchor: Alignment.bottomCenter,
+      child: _PinBadge(
+          icon: Icons.local_fire_department,
+          label: 'Lair',
+          accent: Color(0xFFB07EFF)),
+    ),
+  ];
+
+  // Three great-circle routes connecting the POIs (one dashed).
+  static const List<DotGlobeArc> _arcs = [
+    DotGlobeArc(
+      startLatitude: 42.0,
+      startLongitude: -30.0,
+      endLatitude: -18.0,
+      endLongitude: 55.0,
+      color: Color(0xCCFFD966),
+      altitude: 0.30,
+      backOpacity: 0.12,
+    ),
+    DotGlobeArc(
+      startLatitude: -18.0,
+      startLongitude: 55.0,
+      endLatitude: 10.0,
+      endLongitude: 130.0,
+      color: Color(0xCC7EC8E3),
+      altitude: 0.25,
+      dashed: true,
+      backOpacity: 0.12,
+    ),
+    DotGlobeArc(
+      startLatitude: 42.0,
+      startLongitude: -30.0,
+      endLatitude: -55.0,
+      endLongitude: -110.0,
+      color: Color(0xBBB07EFF),
+      altitude: 0.40,
+      backOpacity: 0.10,
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0xFF05070D), // Kit.voidColor
+      child: DotGlobe(
+        geometry: _fantasyGeometry,
+        markers: _markers,
+        arcs: _arcs,
+        style: const DotGlobeStyle(
+          backgroundColor: Color(0xFF05070D),
+          dotColor: Color(0xFF1A3055),
+          sphereColor: Color(0x22122030),
+          dotRadius: 1.6,
         ),
-        DotGlobeArc(
-          startLatitude: -33.9, startLongitude: 151.2,
-          endLatitude: 30.0, endLongitude: 31.2,
-          color: Color(0xFFFF5A5A), altitude: 0.3, width: 2.5,
-        ),
-        DotGlobeArc(
-          startLatitude: 35.7, startLongitude: 139.7,
-          endLatitude: -33.9, endLongitude: 151.2,
-          color: Color(0xFFC678F5), altitude: 0.5, dashed: true,
-        ),
-        DotGlobeArc(
-          startLatitude: 39.9, startLongitude: 116.4,
-          endLatitude: 30.0, endLongitude: 31.2,
-          color: Color(0xFF4ED7F2), altitude: 0.32,
-        ),
-        DotGlobeArc(
-          startLatitude: 40.7, startLongitude: -74.0,
-          endLatitude: 51.5, endLongitude: -0.1,
-          color: Color(0xFF6B8AE8), altitude: 0.28,
-        ),
-      ],
-      markers: const [
-        DotGlobeMarker(latitude: 35.7, longitude: 139.7, anchor: Alignment.bottomCenter, child: _CityTag('Tokyo')),
-        DotGlobeMarker(latitude: 39.9, longitude: 116.4, anchor: Alignment.bottomCenter, child: _CityTag('Beijing')),
-        DotGlobeMarker(latitude: -33.9, longitude: 151.2, anchor: Alignment.topCenter, child: _CityTag('Sydney')),
-        DotGlobeMarker(latitude: 30.0, longitude: 31.2, anchor: Alignment.centerLeft, child: _CityTag('Cairo')),
-        DotGlobeMarker(latitude: 51.5, longitude: -0.1, anchor: Alignment.bottomCenter, child: _CityTag('London')),
-        DotGlobeMarker(latitude: 40.7, longitude: -74.0, anchor: Alignment.centerRight, child: _CityTag('New York')),
-      ],
+        autoRotateSpeed: 0.06,
+        radiusFactor: 0.80, // shrink so tall arcs stay in frame
+        clipBehavior: Clip.hardEdge,
+      ),
+    );
+  }
+}
+
+/// Custom text — a word rasterised into a dot cloud on the neon preset.
+/// Mirrors the custom_data demo's "Text" mode.
+class _CustomTextScene extends StatelessWidget {
+  const _CustomTextScene();
+
+  @override
+  Widget build(BuildContext context) {
+    return DotGlobe(
+      geometry: _dartTextGeometry,
+      style: DotGlobeStyle.neon,
+      autoRotateSpeed: 0,
+      radiusFactor: 0.88,
+      initialLatitude: 0,
+      initialLongitude: 0,
+    );
+  }
+}
+
+/// POI pin badge — Material-icon pin used as a fantasy-scene marker child.
+class _PinBadge extends StatelessWidget {
+  const _PinBadge({
+    required this.icon,
+    required this.label,
+    required this.accent,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: accent.withValues(alpha: 0.60), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.35),
+            blurRadius: 8,
+            spreadRadius: -2,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: accent),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: accent,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

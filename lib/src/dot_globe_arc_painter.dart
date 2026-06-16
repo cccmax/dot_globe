@@ -58,6 +58,14 @@ class DotGlobeArcPainter extends CustomPainter {
     final cy = size.height / 2;
     final r = size.shortestSide / 2 * radiusFactor;
 
+    // Match the dot painter's zoom: a real canvas scale around the widget
+    // centre so arcs and their stroke widths grow together with the globe.
+    // scale == 1.0 is the original, pixel-identical path.
+    canvas.save();
+    canvas.translate(cx, cy);
+    canvas.scale(frame.scale);
+    canvas.translate(-cx, -cy);
+
     final cosPhi = math.cos(frame.phi);
     final sinPhi = math.sin(frame.phi);
     final cosTheta = math.cos(frame.theta);
@@ -146,6 +154,8 @@ class DotGlobeArcPainter extends CustomPainter {
         _stroke,
       );
     }
+
+    canvas.restore();
   }
 
   /// Splits a path into dashes via its metrics.

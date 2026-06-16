@@ -27,11 +27,11 @@ fi
 
 mkdir -p "${OUT_DIR}"
 
-# Output display width (README renders these ~200px wide; 300 keeps it crisp
-# on retina while staying lightweight).
-WIDTH=300
+# Output width. Square scenes become 512x512; portrait scenes 512x835 (short
+# side >= 512). Sources are rendered at 2x, so this is always a crisp downscale.
+WIDTH=512
 
-for demo in showcase world_cup light presets neon controller routes; do
+for demo in showcase world_cup light presets neon controller natural heatmap_turbo fantasy custom_text; do
   pattern="${SRC_DIR}/${demo}_%03d.png"
   out="${OUT_DIR}/${demo}.webp"
   if ! ls "${SRC_DIR}/${demo}_000.png" >/dev/null 2>&1; then
@@ -39,10 +39,15 @@ for demo in showcase world_cup light presets neon controller routes; do
     continue
   fi
   echo "→ ${demo} (w=${WIDTH})"
+  # q:v 85: the globe is full-frame high-frequency dots in constant motion, so
+  # inter-frame compression barely helps and q100 just bloats the file ~3x with
+  # no visible gain. 40 frames at 20fps = a 2s loop; frame 0 stays the hero pose
+  # for the static pub.dev thumbnail.
   ffmpeg -y -loglevel error \
-    -framerate 18 -i "${pattern}" \
+    -framerate 20 -i "${pattern}" \
+    -frames:v 40 \
     -vf "scale=${WIDTH}:-1:flags=lanczos" \
-    -loop 0 -compression_level 6 -q:v 68 \
+    -loop 0 -compression_level 6 -q:v 85 \
     "${out}"
   bytes=$(wc -c <"${out}" | tr -d ' ')
   printf '  wrote %s (%s bytes)\n' "${out}" "${bytes}"

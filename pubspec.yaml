@@ -2,7 +2,7 @@ name: dot_globe
 description: >-
   A dotted (halftone) 3D globe for Flutter — spin it, drop any widget as a
   lat/lng marker. Pure Dart, zero deps, light & dark presets out of the box.
-version: 0.1.0
+version: 0.2.0
 homepage: https://github.com/cccmax/dot_globe
 repository: https://github.com/cccmax/dot_globe
 issue_tracker: https://github.com/cccmax/dot_globe/issues
@@ -40,5 +40,7 @@ dev_dependencies:
 
 flutter:
   assets:
-    # 陆地采样点（int16 lat*100/lng*100 对，Natural Earth 110m 离线生成，~25KB）
+    # Land dot positions (int16 lat*100/lng*100 pairs, Natural Earth 110m, ~25KB).
     - assets/land_dots.bin
+    # Natural-colour values for those dots (RGB888, NASA Blue Marble, ~19KB).
+    - assets/land_colors.bin

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'demos/colored_dots_demo.dart';
 import 'demos/controller_demo.dart';
+import 'demos/custom_data_demo.dart';
 import 'demos/demo_kit.dart';
+import 'demos/fantasy_world_demo.dart';
 import 'demos/light_demo.dart';
 import 'demos/marker_variety_demo.dart';
 import 'demos/playground_demo.dart';
@@ -60,6 +63,9 @@ class _ShellState extends State<_Shell> {
     _Tab('Control', Icons.my_location_outlined, Color(0xFF14B88A)),
     _Tab('Playground', Icons.tune, Color(0xFF12D6E8)),
     _Tab('Markers', Icons.place_outlined, Color(0xFF5A7BE0)),
+    _Tab('Custom data', Icons.scatter_plot_outlined, Color(0xFF12D6E8)),
+    _Tab('Data globe', Icons.blur_on_outlined, Color(0xFF35B779)),
+    _Tab('Fantasy world', Icons.auto_awesome_outlined, Color(0xFFFFD966)),
   ];
 
   @override
@@ -75,6 +81,9 @@ class _ShellState extends State<_Shell> {
       ControllerDemo(paused: _index != 4),
       PlaygroundDemo(paused: _index != 5),
       MarkerVarietyDemo(paused: _index != 6),
+      CustomDataDemo(paused: _index != 7),
+      ColoredDotsDemo(paused: _index != 8),
+      FantasyWorldDemo(paused: _index != 9),
     ];
 
     return Scaffold(
