@@ -32,6 +32,15 @@ example/test/
 # --- Local publish helper ---
 publish.sh
 
-# --- Dev-only screenshot tooling. The screenshots/ WebPs ARE shipped: they
-#     back the pubspec `screenshots:` gallery (and the pub.dev thumbnail). ---
+# --- Dev-only screenshot tooling ---
 tool/
+
+# --- Only the four pubspec `screenshots:` gallery WebPs ship (they back the
+#     pub.dev gallery + thumbnail). The rest are README-only, served from raw
+#     GitHub URLs, so shipping them would only bloat the published archive. ---
+screenshots/natural.webp
+screenshots/fantasy.webp
+screenshots/heatmap_turbo.webp
+screenshots/controller.webp
+screenshots/light.webp
+screenshots/custom_text.webp
